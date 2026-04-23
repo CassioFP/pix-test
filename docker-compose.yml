@@ -1,0 +1,54 @@
+version: '3.9'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: saque_pix_app
+    volumes:
+      - ./:/var/www
+    ports:
+      - "9501:9501"
+    command: tail -f /dev/null
+    depends_on:
+      - mysql
+      - mailhog
+    environment:
+      - APP_ENV=dev
+    networks:
+      - saque_pix_network
+    working_dir: /var/www/app
+
+  mysql:
+    image: mysql:8
+    container_name: saque_pix_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: saque_pix
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - saque_pix_network
+
+  mailhog:
+    image: mailhog/mailhog
+    platform: linux/amd64
+    container_name: saque_pix_mailhog
+    ports:
+      - "8025:8025" # UI
+      - "1025:1025" # SMTP
+    networks:
+      - saque_pix_network
+
+networks:
+  saque_pix_network:
+
+volumes:
+  mysql_data:
