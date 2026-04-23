@@ -7,6 +7,7 @@ use App\Repository\AccountRepository;
 use App\Repository\WithdrawRepository;
 use Hyperf\DbConnection\Db;
 use Ramsey\Uuid\Uuid;
+use function Hyperf\Support\make;
 
 class WithdrawService
 {
@@ -70,6 +71,15 @@ class WithdrawService
                      WHERE id = ?",
                     [$withdrawId]
                 );
+
+                go(function () use ($dto) {
+                    try {
+                        make(\App\Service\EmailService::class)
+                            ->send($dto->pixKey, $dto->amount);
+                    } catch (\Throwable $e) {
+                        error_log('Erro ao enviar email: ' . $e->getMessage());
+                    }
+                });
             }
 
             return [
