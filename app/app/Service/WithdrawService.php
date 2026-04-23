@@ -6,6 +6,9 @@ use App\DTO\WithdrawRequestDTO;
 use App\Repository\AccountRepository;
 use App\Repository\WithdrawRepository;
 use Hyperf\DbConnection\Db;
+use App\Exception\InsufficientBalanceException;
+use App\Exception\InvalidWithdrawScheduleException;
+use App\Exception\AccountNotFoundException;
 use Ramsey\Uuid\Uuid;
 use function Hyperf\Support\make;
 
@@ -21,14 +24,13 @@ class WithdrawService
         return Db::transaction(function () use ($accountId, $dto) {
 
             $account = $this->accountRepo->findForUpdate($accountId);
-
             if (!$account) {
-                throw new \Exception("Conta não encontrada");
+                throw new AccountNotFoundException();
             }
 
             // valida agendamento no passado
             if ($dto->isScheduled() && strtotime($dto->schedule) < time()) {
-                throw new \Exception("Data de agendamento inválida");
+                throw new InvalidWithdrawScheduleException();
             }
 
             $withdrawId = Uuid::uuid4()->toString();
@@ -37,7 +39,7 @@ class WithdrawService
 
             // valida saldo somente se for imediato
             if (!$isScheduled && $account->balance < $dto->amount) {
-                throw new \Exception("Saldo insuficiente");
+                throw new InsufficientBalanceException();
             }
 
             // cria saque

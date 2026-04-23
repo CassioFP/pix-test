@@ -7,12 +7,16 @@ use App\Service\WithdrawService;
 use Hyperf\HttpServer\Annotation\Controller;
 use Hyperf\HttpServer\Annotation\PostMapping;
 use Psr\Http\Message\ServerRequestInterface;
+use Exception;
+use Hyperf\HttpServer\Contract\ResponseInterface as HttpResponse;
+use Hyperf\HttpMessage\Stream\SwooleStream;
 
 #[Controller]
 class WithdrawController
 {
     public function __construct(
-        private WithdrawService $service
+        private WithdrawService $service,
+        private HttpResponse $response
     ) {}
 
     #[PostMapping(path: "/account/{accountId}/balance/withdraw")]
@@ -22,11 +26,23 @@ class WithdrawController
 
         $dto = new WithdrawRequestDTO($data);
 
-        $result = $this->service->withdraw($accountId, $dto);
+        try {
+            $result = $this->service->withdraw($accountId, $dto);
 
-        return [
-            'success' => true,
-            'data' => $result,
-        ];
+            return $this->response->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (Exception $e) {
+            return $this->response->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ])->withStatus($e->getCode() ?: 500);
+
+            // return response()->json([
+            //     'success' => false,
+            //     'error' => $e->getMessage(),
+            // ], 422);
+        }
     }
 }
