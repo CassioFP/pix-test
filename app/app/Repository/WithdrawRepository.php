@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use Hyperf\DbConnection\Db;
+use App\Enum\WithdrawStatus;
 
 class WithdrawRepository
 {
@@ -37,6 +38,27 @@ class WithdrawRepository
                 $data['type'],
                 $data['key'],
             ]
+        );
+    }
+
+    public function registerSuccess(string $withdrawId)
+    {
+        Db::update(
+            "UPDATE account_withdraw 
+                SET status = 'success', done = 1, processed_at = NOW()
+                WHERE id = ?",
+            [$withdrawId]
+        );
+    }
+
+    public function getScheduledItemsByLimit($limit = null)
+    {
+        $status = WithdrawStatus::PENDING->value;
+        return Db::select("
+            SELECT * FROM account_withdraw
+            WHERE status = $status
+            AND scheduled = 1
+            AND scheduled_for <= " . $limit ?? NOW()
         );
     }
 }

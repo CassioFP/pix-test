@@ -10,6 +10,7 @@ use App\Exception\InsufficientBalanceException;
 use App\Exception\InvalidWithdrawScheduleException;
 use App\Exception\AccountNotFoundException;
 use Ramsey\Uuid\Uuid;
+use App\Enum\WithdrawStatus;
 use function Hyperf\Support\make;
 
 class WithdrawService
@@ -52,7 +53,7 @@ class WithdrawService
                 'scheduled_for' => $dto->schedule,
                 'done' => false,
                 'error' => false,
-                'status' => $isScheduled ? 'pending' : 'processing',
+                'status' => $isScheduled ? WithdrawStatus::PENDING->value : WithdrawStatus::PROCESSING->value,
             ]);
 
             // cria PIX
@@ -66,28 +67,26 @@ class WithdrawService
                 $newBalance = $account->balance - $dto->amount;
 
                 $this->accountRepo->updateBalance($accountId, $newBalance);
-
-                Db::update(
-                    "UPDATE account_withdraw 
-                     SET status = 'success', done = 1, processed_at = NOW()
-                     WHERE id = ?",
-                    [$withdrawId]
-                );
-
-                go(function () use ($dto) {
-                    try {
-                        make(\App\Service\EmailService::class)
-                            ->send($dto->pixKey, $dto->amount);
-                    } catch (\Throwable $e) {
-                        error_log('Erro ao enviar email: ' . $e->getMessage());
-                    }
-                });
+                $this->withdrawRepo->registerSuccess($withdrawId);
+                $this->notify($dto);
             }
 
             return [
                 'withdrawId' => $withdrawId,
-                'status' => $isScheduled ? 'pending' : 'success'
+                'status' => $isScheduled ? WithdrawStatus::PENDING->value : WithdrawStatus::SUCCESS->value
             ];
+        });
+    }
+
+    private function notify(WithdrawRequestDTO $dto)
+    {
+        go(function () use ($dto) {
+            try {
+                make(\App\Service\EmailService::class)
+                    ->send($dto->pixKey, $dto->amount);
+            } catch (\Throwable $e) {
+                error_log('Erro ao enviar email: ' . $e->getMessage());
+            }
         });
     }
 }

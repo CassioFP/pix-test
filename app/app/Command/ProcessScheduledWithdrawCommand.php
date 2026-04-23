@@ -2,11 +2,14 @@
 
 namespace App\Command;
 
+use App\Repository\WithdrawRepository;
 use Hyperf\Command\Command as HyperfCommand;
 use Hyperf\Command\Annotation\Command;
 use Hyperf\DbConnection\Db;
 use Psr\Log\LoggerInterface;
 use Hyperf\Di\Annotation\Inject;
+use App\Enum\WithdrawStatus;
+
 
 #[Command]
 class ProcessScheduledWithdrawCommand extends HyperfCommand
@@ -14,16 +17,11 @@ class ProcessScheduledWithdrawCommand extends HyperfCommand
     #[Inject]
     protected LoggerInterface $logger;
     protected ?string $name = 'withdraw:process-scheduled';
+    private WithdrawRepository $withdrawRepository;
 
     public function handle()
     {
-        $withdraws = Db::select("
-            SELECT * FROM account_withdraw
-            WHERE status = 'pending'
-            AND scheduled = 1
-            AND scheduled_for <= NOW()
-        ");
-
+        $withdraws = $this->withdrawRepository->getScheduledItemsByLimit();
         foreach ($withdraws as $withdraw) {
             try {
                 Db::transaction(function () use ($withdraw) {
@@ -34,7 +32,7 @@ class ProcessScheduledWithdrawCommand extends HyperfCommand
                         [$withdraw->id]
                     );
 
-                    if ($row->status !== 'pending') {
+                    if ($row->status !== WithdrawStatus::PENDING->value) {
                         return;
                     }
 
@@ -45,9 +43,10 @@ class ProcessScheduledWithdrawCommand extends HyperfCommand
                     );
 
                     if ($account->balance < $row->amount) {
+                        $errorTextStatus = WithdrawStatus::ERROR->value;
                         Db::update(
                             "UPDATE account_withdraw 
-                             SET status = 'error', error = 1, error_reason = 'Saldo insuficiente'
+                             SET status = '$errorTextStatus', error = 1, error_reason = 'Saldo insuficiente'
                              WHERE id = ?",
                             [$row->id]
                         );
@@ -63,9 +62,10 @@ class ProcessScheduledWithdrawCommand extends HyperfCommand
                     );
 
                     // marca como sucesso
+                    $successTextStatus = WithdrawStatus::SUCCESS->value;
                     Db::update(
                         "UPDATE account_withdraw
-                         SET status = 'success', done = 1, processed_at = NOW()
+                         SET status = '$successTextStatus', done = 1, processed_at = NOW()
                          WHERE id = ?",
                         [$row->id]
                     );

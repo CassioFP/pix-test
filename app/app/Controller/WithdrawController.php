@@ -38,11 +38,6 @@ class WithdrawController
                 'success' => false,
                 'error' => $e->getMessage(),
             ])->withStatus($e->getCode() ?: 500);
-
-            // return response()->json([
-            //     'success' => false,
-            //     'error' => $e->getMessage(),
-            // ], 422);
         }
     }
 }
