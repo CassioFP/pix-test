@@ -20,6 +20,9 @@ docker exec -it saque_pix_app php bin/hyperf.php start
 - O envio de e-mail foi implementado de forma assíncrona utilizando o sistema de tasks do Hyperf, evitando impacto na latência da requisição.
 - O histórico de emails enviados pode ser visto em localhost:8025
 
+## Saques agendados
+- São processados por um job recorrente
+
 
 ## Banco de dados
 `` account_withdraw ``
