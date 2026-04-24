@@ -12,6 +12,10 @@ docker exec -it saque_pix_app php bin/hyperf.php start
 ```
 
 ## App
+```
+Conta de teste: 11111111-1111-1111-1111-111111111111
+```
+
 - Criação de enum para registrar os status
 - Utilizo Mac, então precisei adicionar a plataforma no MailHog no docker-compose para que o warning de incompatibilidade parasse de aparecer. Pode ser que a mesmo warning apareça dependendo do seu equipamento
 - Tratamento de exceções
